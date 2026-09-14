@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
-class ProductoBase(BaseModel):
+class ProductoCreate(BaseModel):
     nombre: str
     precio_final: float
     cuotas_cantidad: int
@@ -8,10 +8,8 @@ class ProductoBase(BaseModel):
     garantia_meses: int
     stock: int
 
-class ProductoCreate(ProductoBase):
-    pass
-
-class ProductoResponse(ProductoBase):
+class ProductoOut(ProductoCreate):
     id: int
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
