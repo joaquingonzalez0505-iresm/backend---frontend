@@ -1,31 +1,21 @@
-from fastapi import FastAPI, Depends, Query
-# pyrefly: ignore [missing-import]
-from sqlalchemy.orm import Session
-from typing import List, Optional
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import engine, Base, get_db
-from app import schemas
-from app.services import productos as productos_service
+from app.database import engine, Base
+from app.core.config import settings
+from app.routers import productos
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(title=settings.PROJECT_NAME)
 
-@app.get("/productos", response_model=List[schemas.ProductoOut])
-def obtener_productos(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1),
-    nombre: Optional[str] = None,
-    precio_max: Optional[float] = None,
-    db: Session = Depends(get_db)
-):
-    return productos_service.listar_productos(
-        db=db, skip=skip, limit=limit, nombre=nombre, precio_max=precio_max
-    )
+# Habilitar CORS para el frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "*"],  # Se incluye '*' para asegurar acceso en desarrollo
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.post("/productos", response_model=schemas.ProductoOut)
-def crear_producto(
-    producto: schemas.ProductoCreate,
-    db: Session = Depends(get_db)
-):
-    return productos_service.crear_producto(db=db, producto=producto)
+app.include_router(productos.router)
