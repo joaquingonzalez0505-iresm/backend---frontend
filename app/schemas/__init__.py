@@ -1,15 +1,37 @@
-from pydantic import BaseModel
+from app.schemas.usuario import (
+    UsuarioCreate,
+    UsuarioOut,
+    Token,
+    UserRegister,
+    UserOut
+)
+from app.schemas.producto import (
+    ProductoCreate,
+    ProductoOut
+)
+from app.schemas.pedido import (
+    ItemIn,
+    PedidoCreate,
+    ItemOut,
+    ItemPedidoOut,
+    ItemCart,
+    PedidoOut,
+    SolicitudArrepentimientoPublicaIn
+)
 
-class ProductoCreate(BaseModel):
-    nombre: str
-    precio_final: float
-    cuotas_cantidad: int
-    cuotas_valor: float
-    garantia_meses: int
-    stock: int
-
-class ProductoOut(ProductoCreate):
-    id: int
-
-    class Config:
-        from_attributes = True
+__all__ = [
+    "UsuarioCreate",
+    "UsuarioOut",
+    "Token",
+    "UserRegister",
+    "UserOut",
+    "ProductoCreate",
+    "ProductoOut",
+    "ItemIn",
+    "PedidoCreate",
+    "ItemOut",
+    "ItemPedidoOut",
+    "ItemCart",
+    "PedidoOut",
+    "SolicitudArrepentimientoPublicaIn",
+]
