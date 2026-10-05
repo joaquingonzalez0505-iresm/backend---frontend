@@ -1,11 +1,16 @@
-﻿from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Optional
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
+
+Path("uploads/productos").mkdir(parents=True, exist_ok=True)
+Path("app/static/demo").mkdir(parents=True, exist_ok=True)
 
 # 1. BASE DE DATOS SQLITE (Genera el archivo stickerlab.db para DBeaver)
 SQLALCHEMY_DATABASE_URL = "sqlite:///./stickerlab.db"
@@ -69,12 +74,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
+app.mount("/demo", StaticFiles(directory="app/static/demo"), name="demo")
+
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+@app.get("/salud", tags=["Salud"])
+def salud(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"estado": "ok", "base": "ok"}
 
 # Cargar Datos Iniciales si la DB está vacía
 @app.on_event("startup")

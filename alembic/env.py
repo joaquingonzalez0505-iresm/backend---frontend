@@ -12,12 +12,13 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 # Importar reconociendo el paquete 'app'
-from app.database import Base, SQLALCHEMY_DATABASE_URL
+from app.database import Base
+from app.core.config import settings
 import app.models as models
 
 # Configuración de Alembic
 config = context.config
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

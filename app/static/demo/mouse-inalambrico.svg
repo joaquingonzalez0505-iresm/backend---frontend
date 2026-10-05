@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgMouse" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="100%" stop-color="#1b2434"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" rx="30" fill="url(#bgMouse)"/>
+  <!-- Mouse outline -->
+  <path d="M150 140 C150 90, 250 90, 250 140 L250 210 C250 270, 150 270, 150 210 Z" fill="#1e293b" stroke="#38bdf8" stroke-width="4"/>
+  <!-- Center scroll wheel -->
+  <rect x="193" y="115" width="14" height="32" rx="7" fill="#38bdf8"/>
+  <line x1="200" y1="147" x2="200" y2="185" stroke="#475569" stroke-width="2"/>
+  <!-- Logo dot -->
+  <circle cx="200" cy="225" r="7" fill="#38bdf8" opacity="0.8"/>
+  <text x="200" y="320" text-anchor="middle" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="20" font-weight="700">Mouse Inalámbrico G Pro</text>
+  <text x="200" y="348" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="14">Sensor Óptico 25K HERO</text>
+</svg>
