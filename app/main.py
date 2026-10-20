@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.database import engine, Base
+from app.database import engine, Base, SessionLocal
 from app.routers import auth, productos, pedidos, usuarios, welcome
 
 # Crear tablas desde app.models
@@ -36,3 +36,62 @@ app.include_router(auth.router)
 app.include_router(productos.router)
 app.include_router(pedidos.router)
 app.include_router(usuarios.router)
+
+
+# --- AUTOMATIZACIÓN DE USUARIO ADMIN ---
+
+@app.on_event("startup")
+def asegurar_admin():
+    """Al iniciar el servidor, si existe joaquin@iresm.edu.ar le otorga rol de Admin."""
+    try:
+        from app.models import Usuario
+        db = SessionLocal()
+        email_target = "joaquin@iresm.edu.ar"
+        usuario = db.query(Usuario).filter(Usuario.email == email_target).first()
+
+        if usuario:
+            if hasattr(usuario, "rol"):
+                usuario.rol = "admin"
+            if hasattr(usuario, "es_admin"):
+                usuario.es_admin = True
+            if hasattr(usuario, "is_admin"):
+                usuario.is_admin = True
+            db.commit()
+            print(f"--> [ADMIN] Usuario {email_target} actualizado a ADMIN correctamente.")
+        db.close()
+    except Exception as e:
+        print(f"--> [ADMIN] Aviso al verificar admin en startup: {e}")
+
+
+@app.get("/fix-admin")
+def fix_admin_endpoint():
+    """Endpoint manual de verificación de permisos admin."""
+    try:
+        from app.models import Usuario
+        db = SessionLocal()
+        email_target = "joaquin@iresm.edu.ar"
+        usuario = db.query(Usuario).filter(Usuario.email == email_target).first()
+
+        if not usuario:
+            db.close()
+            return {
+                "status": "NO_EXISTE",
+                "mensaje": f"El usuario {email_target} aún no existe en la base de datos de Render. Creá tu cuenta desde la pestaña 'Registrarse' en Vercel y luego recargá este enlace."
+            }
+
+        if hasattr(usuario, "rol"):
+            usuario.rol = "admin"
+        if hasattr(usuario, "es_admin"):
+            usuario.es_admin = True
+        if hasattr(usuario, "is_admin"):
+            usuario.is_admin = True
+
+        db.commit()
+        db.close()
+
+        return {
+            "status": "EXITO",
+            "mensaje": f"¡Listo! {email_target} ahora es ADMINISTRADOR. Cerrá sesión en la web y volvé a ingresar."
+        }
+    except Exception as e:
+        return {"status": "ERROR", "detalle": str(e)}
