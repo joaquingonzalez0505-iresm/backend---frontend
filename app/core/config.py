@@ -18,3 +18,4 @@ class Settings(BaseSettings):
         extra = "allow"
 
 settings = Settings()
+WELCOME_MESSAGE = "Bienvenido a StickerLab API"
