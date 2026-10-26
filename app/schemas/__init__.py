@@ -13,6 +13,10 @@ class UsuarioCreate(UsuarioBase):
 class UsuarioResponse(UsuarioBase):
     id: int
     rol: Optional[str] = "cliente"
+    role: Optional[str] = "cliente"
+    es_admin: Optional[bool] = False
+    is_admin: Optional[bool] = False
+    isAdmin: Optional[bool] = False
 
     class Config:
         from_attributes = True
