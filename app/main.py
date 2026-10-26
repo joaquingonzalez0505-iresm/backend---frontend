@@ -10,7 +10,7 @@ from app.routers import auth, productos, pedidos, usuarios
 # Crear tablas
 Base.metadata.create_all(bind=engine)
 
-# Carpetas necesarias
+# Directorios de estáticos
 Path("uploads/productos").mkdir(parents=True, exist_ok=True)
 Path("app/static/demo").mkdir(parents=True, exist_ok=True)
 
@@ -27,7 +27,8 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 app.mount("/demo", StaticFiles(directory="app/static/demo"), name="demo")
 
-@app.get("/")
+# Responde tanto a GET como a HEAD para eliminar el error 405 de Render
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"mensaje": "API StickerLab activa", "version": "3.0.0"}
 
@@ -37,11 +38,8 @@ app.include_router(pedidos.router)
 app.include_router(usuarios.router)
 
 
-# --- AUTOMATIZACIÓN OBLIGATORIA SUPER ADMIN ---
-
 @app.on_event("startup")
 def forzar_super_admin():
-    """Garantiza la existencia de joaquin@iresm.edu.ar con pass 123 y rol admin al arrancar."""
     try:
         from app.models import Usuario
         from app.core.security import hash_password
@@ -60,8 +58,6 @@ def forzar_super_admin():
         else:
             usuario.hashed_password = hash_password("123")
             usuario.rol = "admin"
-            if hasattr(usuario, "es_admin"): usuario.es_admin = True
-            if hasattr(usuario, "is_admin"): usuario.is_admin = True
 
         db.commit()
         db.close()
@@ -72,7 +68,6 @@ def forzar_super_admin():
 
 @app.get("/fix-admin")
 def fix_admin_endpoint():
-    """Forzar permisos en caso de prueba manual."""
     try:
         from app.models import Usuario
         from app.core.security import hash_password
