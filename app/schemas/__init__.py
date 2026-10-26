@@ -36,17 +36,17 @@ class Token(BaseModel):
 
 # --- PRODUCTOS ---
 class ProductoBase(BaseModel):
-    nombre: str
-    descripcion: Optional[str] = None
-    precio: float
-    stock: int
+    nombre: Optional[str] = "Producto StickerLab"
+    descripcion: Optional[str] = ""
+    precio: Optional[float] = 0.0
+    stock: Optional[int] = 0
+    imagen_url: Optional[str] = None
 
 class ProductoCreate(ProductoBase):
     pass
 
 class ProductoResponse(ProductoBase):
     id: int
-    imagen_url: Optional[str] = None
 
     class Config:
         from_attributes = True
