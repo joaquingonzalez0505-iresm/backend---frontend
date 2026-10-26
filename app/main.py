@@ -12,11 +12,24 @@ Base.metadata.create_all(bind=engine)
 Path("uploads/productos").mkdir(parents=True, exist_ok=True)
 Path("app/static/demo").mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title=settings.PROJECT_NAME, version="3.0.0")
+# Desactivar redirección automática de barra final para evitar que la redirección elimine encabezados CORS
+app = FastAPI(
+    title=settings.PROJECT_NAME, 
+    version="3.0.0",
+    redirect_slashes=False
+)
+
+# Permitir explícitamente tu dominio en Vercel y orígenes locales
+origins = [
+    "https://frontend-lugani-3spl.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "*"
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
