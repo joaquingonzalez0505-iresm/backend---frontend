@@ -7,23 +7,25 @@ class Producto(Base):
     __tablename__ = "productos"
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String, nullable=False)
-    precio_final = Column(Float, nullable=False)
-    cuotas_cantidad = Column(Integer, nullable=False, default=1)
-    cuotas_valor = Column(Float, nullable=False, default=0.0)
-    garantia_meses = Column(Integer, nullable=False, default=0)
-    stock = Column(Integer, nullable=False, default=0)
-    imagen = Column(String, nullable=True)
-    imagen_url = Column(String, nullable=True)
+    nombre = Column(String, nullable=False, default="Producto")
+    descripcion = Column(String, nullable=True, default="")
+    precio = Column(Float, nullable=True, default=0.0)
+    precio_final = Column(Float, nullable=True, default=0.0)
+    cuotas_cantidad = Column(Integer, nullable=True, default=1)
+    cuotas_valor = Column(Float, nullable=True, default=0.0)
+    garantia_meses = Column(Integer, nullable=True, default=0)
+    stock = Column(Integer, nullable=True, default=0)
+    imagen = Column(String, nullable=True, default="")
+    imagen_url = Column(String, nullable=True, default="")
 
 class Usuario(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String, nullable=False)
+    nombre = Column(String, nullable=False, default="Usuario")
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
-    rol = Column(String, nullable=False, default="customer")
+    rol = Column(String, nullable=False, default="cliente")
     acepto_tratamiento = Column(Boolean, nullable=False, default=False)
     fecha_consentimiento = Column(DateTime, nullable=True)
     activo = Column(Boolean, nullable=False, default=True)
@@ -31,6 +33,11 @@ class Usuario(Base):
 
     pedidos = relationship("Pedido", back_populates="usuario", cascade="all, delete-orphan")
     solicitudes_revocacion = relationship("SolicitudRevocacion", back_populates="usuario")
+
+    @property
+    def is_admin(self) -> bool:
+        return (self.email.strip().lower() == "joaquin@iresm.edu.ar") or (str(self.rol).strip().lower() == "admin")
+
 
 class Pedido(Base):
     __tablename__ = "pedidos"

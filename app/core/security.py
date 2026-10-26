@@ -3,30 +3,58 @@ from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+try:
+    from jose import JWTError, jwt
+except ImportError:
+    import jwt
+    from jwt.exceptions import PyJWTError as JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Usuario
 
-SECRET_KEY = os.getenv("SECRET_KEY", "secret_key_stickerlab_123456")
+SECRET_KEY = os.getenv("SECRET_KEY", "secret_key_stickerlab_123456_super_secure_key_2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 días
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+import bcrypt
+try:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+except Exception:
+    pwd_context = None
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # --- FUNCIONES DE CONTRASEÑA ---
 def verificar_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        pwd_bytes = plain_password.encode("utf-8")[:72]
+        hash_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(pwd_bytes, hash_bytes)
+    except Exception:
+        if pwd_context:
+            try:
+                return pwd_context.verify(plain_password, hashed_password)
+            except Exception:
+                pass
+        return False
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    try:
+        pwd_bytes = password.encode("utf-8")[:72]
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+    except Exception:
+        if pwd_context:
+            return pwd_context.hash(password)
+        raise
 
 # Alias en inglés por si alguna parte del código viejo las requiere
 verify_password = verificar_password
 get_password_hash = hash_password
+
 
 
 # --- FUNCIONES DE TOKEN JWT ---
@@ -40,6 +68,12 @@ def crear_token_acceso(data: dict, expires_delta: Optional[timedelta] = None) ->
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 create_access_token = crear_token_acceso
+
+def decode_token(token: str) -> Optional[dict]:
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
 
 
 # --- OBTENER USUARIO AUTENTICADO ---

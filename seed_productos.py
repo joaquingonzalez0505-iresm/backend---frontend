@@ -129,6 +129,7 @@ def run_seed():
             if existente:
                 # Actualizar datos existentes
                 existente.precio_final   = datos["precio_final"]
+                existente.precio         = datos["precio_final"]
                 existente.cuotas_cantidad = datos["cuotas_cantidad"]
                 existente.cuotas_valor   = datos["cuotas_valor"]
                 existente.garantia_meses = datos["garantia_meses"]
@@ -140,6 +141,7 @@ def run_seed():
                 # Insertar nuevo
                 nuevo = Producto(
                     nombre         = datos["nombre"],
+                    precio         = datos["precio_final"],
                     precio_final   = datos["precio_final"],
                     cuotas_cantidad = datos["cuotas_cantidad"],
                     cuotas_valor   = datos["cuotas_valor"],
@@ -152,6 +154,7 @@ def run_seed():
                 print(f"  [INSERT] {datos['nombre']}")
 
         db.commit()
+
 
         # ── 3. Estado final ───────────────────────────────────────────
         final = db.query(Producto).order_by(Producto.id).all()

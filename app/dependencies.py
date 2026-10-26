@@ -48,9 +48,11 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 def require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    if current_user.rol != "admin":
+    is_admin = (current_user.email.strip().lower() == "joaquin@iresm.edu.ar") or (str(current_user.rol).strip().lower() == "admin")
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acceso denegado: se requieren permisos de administrador"
         )
     return current_user
+

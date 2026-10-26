@@ -222,6 +222,8 @@ def seed():
 
                     if "precio_final" in cols_producto and "precio_final" not in prod_dict:
                         prod_dict["precio_final"] = prod.get("precio_final", 1000.0)
+                    if "precio" in cols_producto and "precio" not in prod_dict:
+                        prod_dict["precio"] = prod.get("precio_final", 1000.0)
                     if "stock" in cols_producto and "stock" not in prod_dict:
                         prod_dict["stock"] = prod.get("stock", 10)
 
