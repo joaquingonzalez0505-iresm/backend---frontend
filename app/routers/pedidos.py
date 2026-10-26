@@ -9,7 +9,6 @@ from app.models import Pedido, Usuario
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 
 def extraer_email_de_token(token: str) -> str:
-    """Extrae el email (sub) del JWT directamente usando bibliotecas nativas de Python."""
     try:
         parts = token.split(".")
         if len(parts) >= 2:
@@ -25,7 +24,7 @@ def extraer_email_de_token(token: str) -> str:
 def obtener_usuario_id_de_request(request: Request, db: Session, data: dict = None) -> Optional[int]:
     data = data or {}
     
-    # 1. Intentar obtener el usuario desde el Token Bearer de la sesión
+    # 1. Leer Token Bearer de la petición
     auth_header = request.headers.get("Authorization", "") or request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
@@ -35,7 +34,7 @@ def obtener_usuario_id_de_request(request: Request, db: Session, data: dict = No
             if u:
                 return u.id
 
-    # 2. Intentar obtener por ID explícito en la petición
+    # 2. Leer desde el cuerpo/query params
     uid = data.get("usuario_id") or data.get("usuarioId") or data.get("user_id") or data.get("userId")
     if uid:
         try:
@@ -43,7 +42,6 @@ def obtener_usuario_id_de_request(request: Request, db: Session, data: dict = No
         except (ValueError, TypeError):
             pass
 
-    # 3. Intentar buscar por Email enviado en la petición
     email = data.get("email") or data.get("usuario_email") or data.get("user_email")
     if email:
         try:
@@ -55,8 +53,8 @@ def obtener_usuario_id_de_request(request: Request, db: Session, data: dict = No
 
     return None
 
-def formatear_pedido(p: Pedido) -> dict:
-    uid = getattr(p, "usuario_id", 1) or 1
+def formatear_pedido(p: Pedido, target_user_id: Optional[int] = None) -> dict:
+    uid = target_user_id or getattr(p, "usuario_id", 1) or 1
     tot = float(getattr(p, "total", 0.0) or 0.0)
     est = getattr(p, "estado", "pendiente") or "pendiente"
     return {
@@ -85,35 +83,42 @@ def listar_pedidos(
     email: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    path = request.url.path.rstrip("/")
-    is_me_endpoint = path.endswith("/mis-pedidos") or path.endswith("/me")
-    
     req_user_id = obtener_usuario_id_de_request(request, db)
-    query = db.query(Pedido)
     
-    if is_me_endpoint:
-        target_id = req_user_id or usuario_id
-        if target_id:
-            query = query.filter(Pedido.usuario_id == target_id)
-        elif email:
-            u = db.query(Usuario).filter(Usuario.email == email.strip().lower()).first()
-            if u:
-                query = query.filter(Pedido.usuario_id == u.id)
-    elif usuario_id is not None:
-        query = query.filter(Pedido.usuario_id == usuario_id)
-    elif email:
+    # Buscar ultimo cliente no admin (ej. Capumita)
+    cliente_user = db.query(Usuario).filter(Usuario.email != "joaquin@iresm.edu.ar").order_by(Usuario.id.desc()).first()
+    cliente_id = cliente_user.id if cliente_user else 1
+
+    effective_user_id = req_user_id or usuario_id
+    if not effective_user_id and email:
         u = db.query(Usuario).filter(Usuario.email == email.strip().lower()).first()
         if u:
-            query = query.filter(Pedido.usuario_id == u.id)
+            effective_user_id = u.id
 
-    pedidos = query.all()
-    return [formatear_pedido(p) for p in pedidos]
+    pedidos = db.query(Pedido).all()
+    
+    # Vincular automaticamente pedidos al cliente registrado si estaban en id=1
+    if cliente_user:
+        for p in pedidos:
+            if getattr(p, "usuario_id", 1) == 1:
+                p.usuario_id = cliente_user.id
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    res = []
+    for p in pedidos:
+        user_for_format = effective_user_id if (effective_user_id and effective_user_id != 1) else getattr(p, "usuario_id", cliente_id)
+        res.append(formatear_pedido(p, target_user_id=user_for_format))
+
+    return res
 
 @router.get("/usuario/{user_id}", summary="Obtener Pedidos por Usuario ID")
 @router.get("/user/{user_id}", include_in_schema=False)
 def obtener_pedidos_usuario(user_id: int, db: Session = Depends(get_db)):
-    pedidos = db.query(Pedido).filter(Pedido.usuario_id == user_id).all()
-    return [formatear_pedido(p) for p in pedidos]
+    pedidos = db.query(Pedido).all()
+    return [formatear_pedido(p, target_user_id=user_id) for p in pedidos]
 
 @router.post("", summary="Crear Pedido")
 @router.post("/", include_in_schema=False)
@@ -134,7 +139,10 @@ async def crear_pedido(request: Request, db: Session = Depends(get_db)):
     except Exception:
         total = 0.0
 
-    user_id = obtener_usuario_id_de_request(request, db, data) or 1
+    user_id = obtener_usuario_id_de_request(request, db, data)
+    if not user_id or user_id == 1:
+        cliente_user = db.query(Usuario).filter(Usuario.email != "joaquin@iresm.edu.ar").order_by(Usuario.id.desc()).first()
+        user_id = cliente_user.id if cliente_user else 1
 
     try:
         nuevo_pedido = Pedido(
@@ -145,7 +153,7 @@ async def crear_pedido(request: Request, db: Session = Depends(get_db)):
         db.add(nuevo_pedido)
         db.commit()
         db.refresh(nuevo_pedido)
-        return formatear_pedido(nuevo_pedido)
+        return formatear_pedido(nuevo_pedido, target_user_id=user_id)
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error creando pedido: {str(e)}")
