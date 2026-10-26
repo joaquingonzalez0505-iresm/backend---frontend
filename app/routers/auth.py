@@ -16,11 +16,18 @@ def registrar_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     if db_usuario:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
     
+    # Si es la cuenta de Joaquin, se le asigna rol 'admin' automáticamente
+    email_clean = usuario.email.strip().lower()
+    if email_clean == "joaquin@iresm.edu.ar":
+        rol_final = "admin"
+    else:
+        rol_final = getattr(usuario, 'rol', 'cliente') or 'cliente'
+
     nuevo_usuario = Usuario(
         email=usuario.email,
         nombre=usuario.nombre,
         hashed_password=hash_password(usuario.password),
-        rol=getattr(usuario, 'rol', 'cliente')
+        rol=rol_final
     )
     db.add(nuevo_usuario)
     db.commit()
@@ -31,7 +38,7 @@ def registrar_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
 async def iniciar_sesion(request: Request, db: Session = Depends(get_db)):
     content_type = request.headers.get("content-type", "")
     
-    # Compatibilidad con JSON (Frontend React) y Form Data (Swagger / docs)
+    # Soporta peticiones JSON (Frontend React) y Form Data (Swagger / docs)
     if "application/json" in content_type:
         data = await request.json()
         email = data.get("email") or data.get("username")

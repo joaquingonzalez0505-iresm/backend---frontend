@@ -30,7 +30,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 app.mount("/demo", StaticFiles(directory="app/static/demo"), name="demo")
 
-# Ruta raíz simple para evitar duplicaciones
+# Ruta raíz simple
 @app.get("/")
 def root():
     return {"mensaje": "API StickerLab activa", "version": "3.0.0"}
@@ -46,7 +46,7 @@ app.include_router(usuarios.router)
 
 @app.on_event("startup")
 def asegurar_admin():
-    """Al iniciar el servidor, si existe joaquin@iresm.edu.ar le otorga rol de Admin."""
+    """Al iniciar el servidor, asigna rol 'admin' a joaquin@iresm.edu.ar si existe."""
     try:
         from app.models import Usuario
         db = SessionLocal()
