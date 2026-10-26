@@ -9,21 +9,23 @@ from app.models import Producto
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
+def adaptar_producto_response(p: Producto):
+    desc = getattr(p, "descripcion", None) or getattr(p, "description", "") or ""
+    return {
+        "id": p.id,
+        "nombre": getattr(p, "nombre", "Producto"),
+        "descripcion": desc,
+        "description": desc,
+        "precio": float(getattr(p, "precio", 0.0) or 0.0),
+        "stock": int(getattr(p, "stock", 0) or 0),
+        "imagen_url": getattr(p, "imagen_url", "") or ""
+    }
+
 @router.get("", summary="Listar Productos")
 @router.get("/", include_in_schema=False)
 def listar_productos(db: Session = Depends(get_db)):
     productos = db.query(Producto).all()
-    res = []
-    for p in productos:
-        res.append({
-            "id": p.id,
-            "nombre": p.nombre or "Producto",
-            "descripcion": p.descripcion or "",
-            "precio": float(p.precio) if p.precio is not None else 0.0,
-            "stock": int(p.stock) if p.stock is not None else 0,
-            "imagen_url": p.imagen_url or ""
-        })
-    return res
+    return [adaptar_producto_response(p) for p in productos]
 
 @router.get("/{producto_id}", summary="Obtener Producto")
 @router.get("/{producto_id}/", include_in_schema=False)
@@ -31,14 +33,7 @@ def obtener_producto(producto_id: int, db: Session = Depends(get_db)):
     producto = db.query(Producto).filter(Producto.id == producto_id).first()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return {
-        "id": producto.id,
-        "nombre": producto.nombre or "Producto",
-        "descripcion": producto.descripcion or "",
-        "precio": float(producto.precio) if producto.precio is not None else 0.0,
-        "stock": int(producto.stock) if producto.stock is not None else 0,
-        "imagen_url": producto.imagen_url or ""
-    }
+    return adaptar_producto_response(producto)
 
 @router.post("", summary="Crear Producto")
 @router.post("/", include_in_schema=False)
@@ -56,7 +51,6 @@ async def crear_producto(request: Request, db: Session = Depends(get_db)):
                 except Exception:
                     data = {}
     except Exception as e:
-        print(f"Error procesando body: {e}")
         data = {}
 
     nombre = data.get("nombre") or data.get("title") or data.get("titulo") or "Nuevo Sticker"
@@ -80,29 +74,25 @@ async def crear_producto(request: Request, db: Session = Depends(get_db)):
 
     imagen_url = data.get("imagen_url") or data.get("imagen") or data.get("image") or data.get("url") or ""
 
+    # Construcción dinámica para prevenir TypeError de atributos inexistentes en SQLAlchemy
+    kwargs = {}
+    if hasattr(Producto, "nombre"): kwargs["nombre"] = str(nombre)
+    
+    if hasattr(Producto, "descripcion"): kwargs["descripcion"] = str(descripcion)
+    if hasattr(Producto, "description"): kwargs["description"] = str(descripcion)
+    
+    if hasattr(Producto, "precio"): kwargs["precio"] = precio
+    if hasattr(Producto, "stock"): kwargs["stock"] = stock
+    if hasattr(Producto, "imagen_url"): kwargs["imagen_url"] = str(imagen_url) if imagen_url else None
+
     try:
-        nuevo_producto = Producto(
-            nombre=str(nombre),
-            descripcion=str(descripcion),
-            precio=precio,
-            stock=stock,
-            imagen_url=str(imagen_url) if imagen_url else None
-        )
+        nuevo_producto = Producto(**kwargs)
         db.add(nuevo_producto)
         db.commit()
         db.refresh(nuevo_producto)
-
-        return {
-            "id": nuevo_producto.id,
-            "nombre": nuevo_producto.nombre,
-            "descripcion": nuevo_producto.descripcion,
-            "precio": nuevo_producto.precio,
-            "stock": nuevo_producto.stock,
-            "imagen_url": nuevo_producto.imagen_url
-        }
+        return adaptar_producto_response(nuevo_producto)
     except Exception as e:
         db.rollback()
-        print(f"Error en BD al guardar producto: {e}")
         raise HTTPException(status_code=400, detail=f"Error guardando producto: {str(e)}")
 
 @router.put("/{producto_id}", summary="Actualizar Producto")
@@ -128,29 +118,33 @@ async def actualizar_producto(producto_id: int, request: Request, db: Session = 
         data = {}
 
     if "nombre" in data or "title" in data or "titulo" in data:
-        producto.nombre = str(data.get("nombre") or data.get("title") or data.get("titulo") or producto.nombre)
+        val = str(data.get("nombre") or data.get("title") or data.get("titulo") or "")
+        if hasattr(producto, "nombre"): producto.nombre = val
+
     if "descripcion" in data or "description" in data:
-        producto.descripcion = str(data.get("descripcion") or data.get("description") or producto.descripcion)
+        val = str(data.get("descripcion") or data.get("description") or "")
+        if hasattr(producto, "descripcion"): producto.descripcion = val
+        if hasattr(producto, "description"): producto.description = val
     
     raw_precio = data.get("precio") if "precio" in data else (
         data.get("precioFinal") if "precioFinal" in data else (
             data.get("price") if "price" in data else data.get("valor")
         )
     )
-    if raw_precio is not None:
+    if raw_precio is not None and hasattr(producto, "precio"):
         try:
             producto.precio = float(str(raw_precio).replace(",", "."))
         except Exception:
             pass
 
     raw_stock = data.get("stock") if "stock" in data else data.get("cantidad")
-    if raw_stock is not None:
+    if raw_stock is not None and hasattr(producto, "stock"):
         try:
             producto.stock = int(raw_stock)
         except Exception:
             pass
 
-    if "imagen_url" in data or "imagen" in data or "image" in data:
+    if ("imagen_url" in data or "imagen" in data or "image" in data) and hasattr(producto, "imagen_url"):
         img = data.get("imagen_url") or data.get("imagen") or data.get("image")
         if img:
             producto.imagen_url = str(img)
@@ -158,14 +152,7 @@ async def actualizar_producto(producto_id: int, request: Request, db: Session = 
     try:
         db.commit()
         db.refresh(producto)
-        return {
-            "id": producto.id,
-            "nombre": producto.nombre,
-            "descripcion": producto.descripcion,
-            "precio": producto.precio,
-            "stock": producto.stock,
-            "imagen_url": producto.imagen_url
-        }
+        return adaptar_producto_response(producto)
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error actualizando producto: {str(e)}")
@@ -183,20 +170,3 @@ def eliminar_producto(producto_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/{producto_id}/imagen", summary="Subir Imagen de Producto")
-def subir_imagen_producto(producto_id: int, imagen: UploadFile = File(...), db: Session = Depends(get_db)):
-    producto = db.query(Producto).filter(Producto.id == producto_id).first()
-    if not producto:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    
-    directorio = "uploads/productos"
-    os.makedirs(directorio, exist_ok=True)
-    path_archivo = os.path.join(directorio, f"{producto_id}_{imagen.filename}")
-    
-    with open(path_archivo, "wb") as buffer:
-        shutil.copyfileobj(imagen.file, buffer)
-        
-    producto.imagen_url = f"/static/productos/{producto_id}_{imagen.filename}"
-    db.commit()
-    return {"imagen_url": producto.imagen_url}
