@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+
 from app.database import get_db
 from app.models import Usuario
 from app.schemas import UsuarioCreate, UsuarioResponse, Token
@@ -26,9 +28,24 @@ def registrar_usuario(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     return nuevo_usuario
 
 @router.post("/login", response_model=Token, summary="Iniciar Sesión")
-def iniciar_sesion(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    usuario = db.query(Usuario).filter(Usuario.email == form_data.username).first()
-    if not usuario or not verificar_password(form_data.password, usuario.hashed_password):
+async def iniciar_sesion(request: Request, db: Session = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    
+    # Compatibilidad con JSON (Frontend React) y Form Data (Swagger / docs)
+    if "application/json" in content_type:
+        data = await request.json()
+        email = data.get("email") or data.get("username")
+        password = data.get("password")
+    else:
+        form = await request.form()
+        email = form.get("username") or form.get("email")
+        password = form.get("password")
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email y contraseña requeridos")
+
+    usuario = db.query(Usuario).filter(Usuario.email == email).first()
+    if not usuario or not verificar_password(password, usuario.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
     
     access_token = crear_token_acceso(data={"sub": usuario.email})
