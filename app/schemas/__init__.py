@@ -1,37 +1,53 @@
-from app.schemas.usuario import (
-    UsuarioCreate,
-    UsuarioOut,
-    Token,
-    UserRegister,
-    UserOut
-)
-from app.schemas.producto import (
-    ProductoCreate,
-    ProductoOut
-)
-from app.schemas.pedido import (
-    ItemIn,
-    PedidoCreate,
-    ItemOut,
-    ItemPedidoOut,
-    ItemCart,
-    PedidoOut,
-    SolicitudArrepentimientoPublicaIn
-)
+from pydantic import BaseModel
+from typing import Optional, List
 
-__all__ = [
-    "UsuarioCreate",
-    "UsuarioOut",
-    "Token",
-    "UserRegister",
-    "UserOut",
-    "ProductoCreate",
-    "ProductoOut",
-    "ItemIn",
-    "PedidoCreate",
-    "ItemOut",
-    "ItemPedidoOut",
-    "ItemCart",
-    "PedidoOut",
-    "SolicitudArrepentimientoPublicaIn",
-]
+# --- USUARIOS ---
+class UsuarioBase(BaseModel):
+    email: str
+    nombre: Optional[str] = None
+
+class UsuarioCreate(UsuarioBase):
+    password: str
+    rol: Optional[str] = "cliente"
+
+class UsuarioResponse(UsuarioBase):
+    id: int
+    rol: Optional[str] = "cliente"
+
+    class Config:
+        from_attributes = True
+
+# --- TOKEN DE AUTENTICACIÓN ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# --- PRODUCTOS ---
+class ProductoBase(BaseModel):
+    nombre: str
+    descripcion: Optional[str] = None
+    precio: float
+    stock: int
+
+class ProductoCreate(ProductoBase):
+    pass
+
+class ProductoResponse(ProductoBase):
+    id: int
+    imagen_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+# --- PEDIDOS ---
+class PedidoCreate(BaseModel):
+    total: float
+
+class PedidoResponse(BaseModel):
+    id: int
+    usuario_id: int
+    total: float
+    estado: str
+
+    class Config:
+        from_attributes = True
