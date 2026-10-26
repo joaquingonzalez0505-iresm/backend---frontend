@@ -12,25 +12,13 @@ Base.metadata.create_all(bind=engine)
 Path("uploads/productos").mkdir(parents=True, exist_ok=True)
 Path("app/static/demo").mkdir(parents=True, exist_ok=True)
 
-# Desactivar redirección automática de barra final para evitar que la redirección elimine encabezados CORS
-app = FastAPI(
-    title=settings.PROJECT_NAME, 
-    version="3.0.0",
-    redirect_slashes=False
-)
+app = FastAPI(title=settings.PROJECT_NAME, version="3.0.0")
 
-# Permitir explícitamente tu dominio en Vercel y orígenes locales
-origins = [
-    "https://frontend-lugani-3spl.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "*"
-]
-
+# Configuración CORS universal para aceptar peticiones desde Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,6 +27,7 @@ app.mount("/static", StaticFiles(directory="uploads"), name="static")
 app.mount("/demo", StaticFiles(directory="app/static/demo"), name="demo")
 
 @app.get("/")
+@app.head("/")
 def root():
     return {"mensaje": "API StickerLab activa", "version": "3.0.0"}
 
