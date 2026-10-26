@@ -1,27 +1,39 @@
+import base64
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Pedido, Usuario
-from app.core.security import decodificar_token
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
+
+def extraer_email_de_token(token: str) -> str:
+    """Extrae el email (sub) del JWT directamente usando bibliotecas nativas de Python."""
+    try:
+        parts = token.split(".")
+        if len(parts) >= 2:
+            payload_b64 = parts[1]
+            payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+            decoded_bytes = base64.urlsafe_b64decode(payload_b64)
+            payload = json.loads(decoded_bytes.decode("utf-8"))
+            return str(payload.get("sub", "")).strip().lower()
+    except Exception:
+        pass
+    return ""
 
 def obtener_usuario_id_de_request(request: Request, db: Session, data: dict = None) -> Optional[int]:
     data = data or {}
     
     # 1. Intentar obtener el usuario desde el Token Bearer de la sesión
-    auth_header = request.headers.get("Authorization", "")
+    auth_header = request.headers.get("Authorization", "") or request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
-        try:
-            token = auth_header.split(" ")[1]
-            payload = decodificar_token(token)
-            if payload and "sub" in payload:
-                u = db.query(Usuario).filter(Usuario.email == payload["sub"].strip().lower()).first()
-                if u:
-                    return u.id
-        except Exception:
-            pass
+        token = auth_header.split(" ")[1]
+        email_token = extraer_email_de_token(token)
+        if email_token:
+            u = db.query(Usuario).filter(Usuario.email == email_token).first()
+            if u:
+                return u.id
 
     # 2. Intentar obtener por ID explícito en la petición
     uid = data.get("usuario_id") or data.get("usuarioId") or data.get("user_id") or data.get("userId")
@@ -79,7 +91,6 @@ def listar_pedidos(
     req_user_id = obtener_usuario_id_de_request(request, db)
     query = db.query(Pedido)
     
-    # Si la consulta viene de una pestaña de mis pedidos
     if is_me_endpoint:
         target_id = req_user_id or usuario_id
         if target_id:
