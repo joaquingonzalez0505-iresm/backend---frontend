@@ -8,6 +8,7 @@ from app.core.security import obtener_usuario_actual
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
 @router.get("/me", response_model=UsuarioResponse, summary="Obtener Mis Datos")
+@router.get("/me/", response_model=UsuarioResponse, include_in_schema=False)
 def obtener_mis_datos(usuario_actual: Usuario = Depends(obtener_usuario_actual)):
     email = usuario_actual.email.strip().lower()
     is_admin = (email == "joaquin@iresm.edu.ar") or (str(getattr(usuario_actual, "rol", "")).lower() == "admin")

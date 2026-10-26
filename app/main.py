@@ -7,10 +7,8 @@ from app.core.config import settings
 from app.database import engine, Base, SessionLocal
 from app.routers import auth, productos, pedidos, usuarios
 
-# Crear tablas
 Base.metadata.create_all(bind=engine)
 
-# Directorios de estáticos
 Path("uploads/productos").mkdir(parents=True, exist_ok=True)
 Path("app/static/demo").mkdir(parents=True, exist_ok=True)
 
@@ -18,7 +16,7 @@ app = FastAPI(title=settings.PROJECT_NAME, version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,8 +25,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 app.mount("/demo", StaticFiles(directory="app/static/demo"), name="demo")
 
-# Responde tanto a GET como a HEAD para eliminar el error 405 de Render
-@app.api_route("/", methods=["GET", "HEAD"])
+@app.get("/")
 def root():
     return {"mensaje": "API StickerLab activa", "version": "3.0.0"}
 
