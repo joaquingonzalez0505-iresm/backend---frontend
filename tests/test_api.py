@@ -42,7 +42,11 @@ def test_crear_producto_solo_con_precio():
         "stock": 15
     }
     response = client.post("/productos", json=payload)
-    assert response.status_code == 200, response.text
+    
+    # ── ROTURA INTENCIONAL PARA ENTREGABLE (CLASE 13) ──
+    assert response.status_code == 200, "Rotura forzada para demostración de test fallido"
+    # ───────────────────────────────────────────────────
+
     data = response.json()
     assert data["nombre"] == "Sticker Test Produccion"
     assert data["precio"] == 2500.50
@@ -75,12 +79,10 @@ def test_crear_producto_con_cuotas_y_url():
 
 def test_actualizar_producto():
     """Validates PUT endpoint maps dynamic fields and updates both precio and precio_final."""
-    # First create
     p_res = client.post("/productos", json={"nombre": "Para Actualizar", "precio": 1000})
     assert p_res.status_code == 200
     prod_id = p_res.json()["id"]
 
-    # Now update with PUT
     put_res = client.put(f"/productos/{prod_id}", json={
         "nombre": "Actualizado OK",
         "precio": 4500,
@@ -123,14 +125,12 @@ def test_login_joaquin_admin_structure():
     assert response.status_code == 200, response.text
     data = response.json()
 
-    # Required top-level fields
     assert "access_token" in data
     assert "token" in data
     assert data["token_type"] == "bearer"
     assert data["rol"] == "admin"
     assert data["is_admin"] is True
 
-    # Required user object
     user = data["user"]
     assert user["email"] == "joaquin@iresm.edu.ar"
     assert user["rol"] == "admin"
@@ -139,7 +139,6 @@ def test_login_joaquin_admin_structure():
     assert user["is_admin"] is True
     assert user["isAdmin"] is True
 
-    # Required usuario object (identical to user)
     usuario = data["usuario"]
     assert usuario == user
 
@@ -221,4 +220,3 @@ def test_no_trailing_slash_redirects():
     assert r1.status_code == 200
     r2 = client.get("/productos/")
     assert r2.status_code == 200
-
