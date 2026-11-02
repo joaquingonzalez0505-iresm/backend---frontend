@@ -1,20 +1,26 @@
-from pathlib import Path
+﻿from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.database import engine, Base, SessionLocal
 from app.routers import auth, productos, pedidos, usuarios
 
+# Crear tablas iniciales si no existen
 Base.metadata.create_all(bind=engine)
 
+# Crear directorios estáticos
 Path("uploads/productos").mkdir(parents=True, exist_ok=True)
 Path("app/static/demo").mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title=settings.PROJECT_NAME, version="3.0.0", redirect_slashes=False)
 
-# Configuración CORS universal para aceptar peticiones desde Vercel y clientes locales
+# 1. Compresión GZip (Requisito DSI2 Clase 12)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# 2. Configuración CORS universal para Vercel y local
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,14 +29,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="uploads"), name="static")
-app.mount("/demo", StaticFiles(directory="app/static/demo"), name="demo")
+# 3. Archivos estáticos con Caché (Requisito DSI2 Clase 12)
+class StaticConCache(StaticFiles):
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        if respuesta.status_code == 200:
+            respuesta.headers["Cache-Control"] = "public, max-age=2592000, immutable"
+        return respuesta
 
+app.mount("/static", StaticConCache(directory="uploads"), name="static")
+app.mount("/demo", StaticConCache(directory="app/static/demo"), name="demo")
+
+# Endpoints base
 @app.get("/")
 @app.head("/")
 def root():
     return {"mensaje": "API StickerLab activa", "version": "3.0.0"}
 
+# 4. Endpoint de Salud (Requisito DSI2 Clase 12)
+@app.get("/salud")
+def salud():
+    return {"estado": "ok", "base": "ok"}
+
+# Routers de la aplicación
 app.include_router(auth.router)
 app.include_router(productos.router)
 app.include_router(pedidos.router)
@@ -84,7 +105,6 @@ def startup_setup():
         print("--> [ADMIN] Super Admin Joaquin (pass: 123) listo en la base de datos.")
     except Exception as e:
         print(f"--> [ADMIN] Error en startup: {e}")
-
 
 
 @app.get("/fix-admin")
